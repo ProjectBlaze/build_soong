@@ -112,6 +112,7 @@ var Configuration = map[string]PathConfig{
 	"llvm-ar": 	      Allowed,
 	"nproc":          Allowed,
 	"openssl":        Allowed,
+	"pahole":         Allowed,
 	"patch":          Allowed,
 	"pstree":         Allowed,
 	"python3":        Allowed,
