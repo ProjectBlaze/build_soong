@@ -105,17 +105,12 @@ func (lto *lto) flags(ctx BaseModuleContext, flags Flags) Flags {
 			ltoCFlag = "-flto"
 		} else {
 			ltoCFlag = "-flto=thin -fsplit-lto-unit"
-			ltoLdFlag = "-Wl,--lto-O0"
 		}
 
 		flags.Local.CFlags = append(flags.Local.CFlags, ltoCFlag)
 		flags.Local.AsFlags = append(flags.Local.AsFlags, ltoCFlag)
 		flags.Local.LdFlags = append(flags.Local.LdFlags, ltoCFlag)
 		flags.Local.LdFlags = append(flags.Local.LdFlags, ltoLdFlag)
-
-		if Bool(lto.Properties.Whole_program_vtables) {
-			flags.Local.CFlags = append(flags.Local.CFlags, "-fwhole-program-vtables")
-		}
 
 		if (lto.DefaultThinLTO(ctx) || lto.ThinLTO()) && ctx.Config().IsEnvTrue("USE_THINLTO_CACHE") && lto.useClangLld(ctx) {
 			// Set appropriate ThinLTO cache policy
@@ -130,33 +125,47 @@ func (lto *lto) flags(ctx BaseModuleContext, flags Flags) Flags {
 			flags.Local.LdFlags = append(flags.Local.LdFlags, cachePolicyFormat+policy)
 		}
 
-		// If the module does not have a profile, be conservative and limit cross TU inline
-		// limit to 5 LLVM IR instructions, to balance binary size increase and performance.
-		if !ctx.isPgoCompile() && !ctx.isAfdoCompile() {
-			flags.Local.LdFlags = append(flags.Local.LdFlags,
-				"-Wl,-plugin-opt,-import-instr-limit=5")
-			flags.Local.LdFlags = append(flags.Local.LdFlags,
-				"-Wl,--lto-O3")
-		}
-		
-        // Reduce the inlining threshold for a better balance of binary size and
-        // performance.
-        additionalLdFlags := []string{
-            "-Wl,-mllvm,-inline-threshold=600",
-            "-Wl,-mllvm,-inlinehint-threshold=550",
-            "-Wl,-mllvm,-unroll-threshold=800",
-            "-Wl,-mllvm,-polly",
-            "-Wl,-mllvm,-polly-ast-use-context",
-            "-Wl,-mllvm,-polly-invariant-load-hoisting",
-            "-Wl,-mllvm,-polly-vectorizer=stripmine",
-            "-Wl,-mllvm,-polly-loopfusion-greedy=1",
-            "-Wl,-mllvm,-polly-scheduling-chunksize=1",
-            "-Wl,-plugin-opt,-import-instr-limit=40",
-            "-Wl,-plugin-opt=O3",
-            "-Wl,-O3",
-            "-Wl,--gc-sections",
+        additionalCFlags := []string {
+            "-fwhole-program-vtables",
         }
-        flags.Local.LdFlags = append(flags.Local.LdFlags, additionalLdFlags...)
+
+        flags.Local.CFlags = append(flags.Local.CFlags, additionalCFlags...)
+
+		// If the module does not have a profile, be conservative and limit cross TU inline
+		// limit to 40 LLVM IR instructions, to balance binary size increase and performance.
+		if !ctx.isPgoCompile() && !ctx.isAfdoCompile() {
+            // Reduce the inlining threshold for a better balance of binary size and
+            // performance.
+            additionalNoPgoAfdoLdFlags := []string {
+                "-Wl,-plugin-opt,-import-instr-limit=5",
+            }
+
+            flags.Local.LdFlags = append(flags.Local.LdFlags, additionalNoPgoAfdoLdFlags...)
+		} else {
+            additionalLdFlags := []string {
+                "-Wl,-mllvm,-inline-threshold=600",
+                "-Wl,-mllvm,-inlinehint-threshold=550",
+                "-Wl,-mllvm,-unroll-threshold=800",
+                "-Wl,-mllvm,-polly",
+                "-Wl,-mllvm,-polly-ast-use-context",
+                "-Wl,-mllvm,-polly-invariant-load-hoisting",
+                "-Wl,-mllvm,-polly-vectorizer=stripmine",
+                "-Wl,-mllvm,-polly-loopfusion-greedy=1",
+                "-Wl,-mllvm,-polly-scheduling-chunksize=1",
+                "-Wl,-plugin-opt=O3",
+                "-Wl,-plugin-opt,-import-instr-limit=40",
+                "-Wl,-O3",
+                "-Wl,--gc-sections",
+                "-Wl,--lto-O3",
+            }
+
+            additionalPgoAfdoCFlags := []string {
+                "-flto",
+            }
+
+            flags.Local.CFlags = append(flags.Local.CFlags, additionalPgoAfdoCFlags...)
+            flags.Local.LdFlags = append(flags.Local.LdFlags, additionalLdFlags...)
+		}
 	}
 	return flags
 }
