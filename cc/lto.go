@@ -143,8 +143,8 @@ func (lto *lto) flags(ctx BaseModuleContext, flags Flags) Flags {
             flags.Local.LdFlags = append(flags.Local.LdFlags, additionalNoPgoAfdoLdFlags...)
 		} else {
             additionalLdFlags := []string {
-                "-Wl,-mllvm,-inline-threshold=600",
-                "-Wl,-mllvm,-inlinehint-threshold=550",
+                "-Wl,-mllvm,-inline-threshold=500",
+                "-Wl,-mllvm,-inlinehint-threshold=450",
                 "-Wl,-mllvm,-unroll-threshold=800",
                 "-Wl,-mllvm,-polly",
                 "-Wl,-mllvm,-polly-ast-use-context",
@@ -157,10 +157,30 @@ func (lto *lto) flags(ctx BaseModuleContext, flags Flags) Flags {
                 "-Wl,-O3",
                 "-Wl,--gc-sections",
                 "-Wl,--lto-O3",
+                "-Wl,--strip-all",
+                "-Wl,--icf=safe",
             }
 
             additionalPgoAfdoCFlags := []string {
+                "-ffunction-sections",
+                "-fdata-sections",
+                "-fuse-ld=gold",
+                "-fomit-frame-pointer",
+                "-ffast-math",
+                "-funroll-loops",
                 "-flto",
+                "-O3",
+                "-Wl,--lto-O3",
+                "-fdata-sections",
+                "-fno-common",
+                "-Wl,--gc-sections",
+                "-fno-strict-overflow",
+                "-fstrict-aliasing",
+                "-Wl,--icf=safe",
+                "-Wl,--as-needed",
+                "-Wl,--sort-common",
+                "-fmerge-all-constants",
+                "-ftree-vectorize",
             }
 
             flags.Local.CFlags = append(flags.Local.CFlags, additionalPgoAfdoCFlags...)
